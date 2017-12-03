@@ -19,7 +19,7 @@ def _load_passwords():
     if PASSWORDS is None:
         filename=path.join(HERE, '.passwords')
         if path.exists(filename):
-            PASSWORDS = json.load(filename)
+            PASSWORDS = json.loads(open(filename, 'r').read())
         else:
             PASSWORDS={}
     return PASSWORDS
@@ -49,7 +49,6 @@ def encode(filename, outname=None):
     for position, insertByte in password:
         content = content[:position] + insertByte + content[position:]
         positions.append(position)
-        print('content len: ', len(content))
     #save content
     content = b64encode(content).decode('ascii')
     outname = outname if outname else filename + '.encoded'
@@ -121,6 +120,8 @@ def encodeAll(dirname=None):
         password, outname = encode(abspath)
         del outname
         pw_map[relpath]=password
+    c=json.dumps(pw_map)
+    open('.passwords', 'w').write(c)
 
 def decodeAll(dirname=None):
     '''将会对dirname下的文件解密, 
@@ -188,14 +189,28 @@ def test_needEncodeFiles():
     os.remove(test_file2)
     os.remove(test_file + '.encoded')
     os.remove(test_file2 + '.encoded')
+
+def test_encodeAll():
+    test_file = path.join(HERE, DIRS[0], 'test.file.py')
+    test_file2 = path.join(HERE, DIRS[1], 'test.file.es2')
+    open(test_file, 'w').write('testcontent')
+    open(test_file2, 'w').write('testcontent')
+    encodeAll()
+    print(PASSWORDS)
+    os.remove(test_file)
+    os.remove(test_file2)
+    os.remove(test_file + '.encoded')
+    os.remove(test_file2 + '.encoded')
     
 
 def test_sendPasswords():
-    sendPasswords('this is passwords')
+    pws = open('.passwords', 'r').read()
+    sendPasswords(pws)
 
 
 if __name__=='__main__':
     # test_genereate_password() 
     # test_encode_decode()
     # test_needEncodeFiles()
-    # test_sendPasswords()
+    test_encodeAll()
+    test_sendPasswords()
