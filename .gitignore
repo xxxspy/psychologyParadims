@@ -1,0 +1,17 @@
+# decode passwords
+/.passwords
+
+# Erpime
+*.es
+*.es2
+*.edata
+
+# text
+*.txt
+
+# psychopy
+*.py 
+*.pyc
+*.psyexp
+*.log
+*/data/
