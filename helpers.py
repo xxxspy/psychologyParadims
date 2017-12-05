@@ -24,6 +24,7 @@ def _load_passwords():
             PASSWORDS={}
     return PASSWORDS
 
+
 def _save_passwords():
     PASSWORDS = _load_passwords()
     filename = path.join(HERE, '.passwords')
@@ -58,8 +59,13 @@ def encode(filename, outname=None):
     return json.dumps(positions), outname
 
 
-def decode(filename, password, outname=None):
-    '''password: json of list of tuples (position, insertByte)'''
+def decode(filename, password=None, outname=None):
+    '''filename: abspath of file
+    password: json of list of tuples (position, insertByte)'''
+    if password is None:
+        relpath = path.relpath(filename, HERE)
+        pw_map = _load_passwords()
+        password = pw_map[relpath]
     password = json.loads(password)
     password.reverse()
     with open(filename, 'r') as f:
@@ -123,6 +129,7 @@ def encodeAll(dirname=None):
     c=json.dumps(pw_map)
     open('.passwords', 'w').write(c)
 
+
 def decodeAll(dirname=None):
     '''将会对dirname下的文件解密, 
     如果没有指定dirname, 会将所有DIRS下所有文件解密'''
@@ -130,7 +137,8 @@ def decodeAll(dirname=None):
     for abspath in needDecodeFiles(dirname=dirname):
         if abspath not in pw_map:
             raise ValueError('No Password, check `.passwords` file')
-        password = pw_map[abspath]
+        relpath = path.relpath(abspath, start=HERE)
+        password = pw_map[relpath]
         decode(abspath, password)
 
 def sendPasswords(passwords: str):
@@ -201,16 +209,44 @@ def test_encodeAll():
     os.remove(test_file2)
     os.remove(test_file + '.encoded')
     os.remove(test_file2 + '.encoded')
+    os.remove(path.join(HERE, '.passwords'))
     
 
 def test_sendPasswords():
     pws = open('.passwords', 'r').read()
     sendPasswords(pws)
 
+def abspath(fpath):
+    if not path.isabs(fpath):
+        return path.join(HERE, fpath)
+    return fpath
+
+def relpath(fpath):
+    if path.isabs(fpath):
+        return path.relpath(fpath, HERE)
+    return fpath
 
 if __name__=='__main__':
     # test_genereate_password() 
     # test_encode_decode()
     # test_needEncodeFiles()
-    test_encodeAll()
-    test_sendPasswords()
+    # test_encodeAll()
+    # test_sendPasswords()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-e', '--encode', help='加密文件')
+    parser.add_argument('-ea', '--encodeAll', help='加密文件夹')
+    parser.add_argument('-d', '--decode', help='解密文件夹')
+    parser.add_argument('-da', '--decodeAll', help='解密文件夹')
+    parser.add_argument('-s', '--send', help='密码发送到我的邮箱')
+    args = parser.parse_args()
+    if args.encode:
+        fpath = abspath(args.encode)
+        positions, _=encode(args.encode)
+        pw_map = _load_passwords()
+        pw_map[relpath(fpath)]=positions
+        _save_passwords()
+
+
+
+
