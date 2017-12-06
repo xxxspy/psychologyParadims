@@ -108,6 +108,7 @@ def needDecodeFiles(dirname=None):
         aim_dirs = [dirname, ]
     else:
         aim_dirs = [path.join(HERE, p) for p in DIRS]
+    print(aim_dirs)
     for dr in aim_dirs:
         for fdr, subdirs, subfiles in os.walk(dr):
             for f in subfiles:
@@ -121,25 +122,34 @@ def encodeAll(dirname=None):
     '''将对dirname下的文件进行加密,
     如果没有指定dirname, 将会对DIRS下所有文件加密'''
     pw_map = _load_passwords()
-    for abspath in needEncodeFiles(dirname=dirname):
+    nefiles = needEncodeFiles(dirname=dirname)
+    for abspath in nefiles:
+        print('Encoding {}'.format(abspath))
         relpath = path.relpath(abspath,start=HERE)
         password, outname = encode(abspath)
         del outname
         pw_map[relpath]=password
     c=json.dumps(pw_map)
     open('.passwords', 'w').write(c)
+    print('{} files endswith `{}` encoded'.format(len(nefiles), SUFFIXES))
 
 
 def decodeAll(dirname=None):
     '''将会对dirname下的文件解密, 
     如果没有指定dirname, 会将所有DIRS下所有文件解密'''
     pw_map = _load_passwords()
-    for abspath in needDecodeFiles(dirname=dirname):
-        if abspath not in pw_map:
-            raise ValueError('No Password, check `.passwords` file')
+    ndfiles = needDecodeFiles(dirname=dirname)
+    for abspath in ndfiles:
+        print('Decoding file: {}'.format(abspath))
         relpath = path.relpath(abspath, start=HERE)
-        password = pw_map[relpath]
+        key = relpath[:-8]
+        if key not in pw_map:
+            print(pw_map.keys())
+            print(relpath)
+            raise ValueError('No Password for {}, check `.passwords` file'.format(key))
+        password = pw_map[key]
         decode(abspath, password)
+    print('{} Files in {} endswith `{}` decoded!'.format(len(ndfiles), dirname, '.encoded'))
 
 def sendPasswords(passwords: str):
     '''把密码发送到我的邮箱'''
@@ -158,6 +168,7 @@ def sendPasswords(passwords: str):
     header = email.header.Header(now + 'psychologyParadim密码', 'utf8')
     content['Subject']=header
     server.sendmail(username, [username], content.as_string())
+    print('Email send to {}'.format(username))
 
 
 
@@ -238,7 +249,7 @@ if __name__=='__main__':
     parser.add_argument('-ea', '--encodeAll', help='加密文件夹')
     parser.add_argument('-d', '--decode', help='解密文件夹')
     parser.add_argument('-da', '--decodeAll', help='解密文件夹')
-    parser.add_argument('-s', '--send', help='密码发送到我的邮箱')
+    parser.add_argument('-s', '--send', help='密码发送到我的邮箱', action='store_true')
     args = parser.parse_args()
     if args.encode:
         fpath = abspath(args.encode)
@@ -246,7 +257,13 @@ if __name__=='__main__':
         pw_map = _load_passwords()
         pw_map[relpath(fpath)]=positions
         _save_passwords()
-
-
-
-
+    if args.encodeAll:
+        encodeAll(dirname=args.encodeAll)
+    if args.decode:
+        fpath = abspath(args.decode)
+        decode(fpath)
+    if args.decodeAll:
+        decodeAll(args.decodeAll)
+    if args.send:
+        pwds = _load_passwords()
+        sendPasswords(json.dumps(pwds))
